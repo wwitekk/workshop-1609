@@ -1,22 +1,24 @@
-def test_home_and_detail_render(client):
+def test_browse_and_recipe_detail_render(client):
     home = client.get("/")
     assert home.status_code == 200
-    assert b"Pocket Cinema" in home.data
-    assert home.data.count(b'class="movie-card"') == 24
-    assert client.get("/movie/afterlight").status_code == 200
-    assert client.get("/movie/missing").status_code == 404
+    assert b"TableStory" in home.data
+    recipes = client.get("/api/recipes").get_json()
+    assert client.get(f"/recipe/{recipes[0]['id']}").status_code == 200
+    assert client.get("/recipe/missing").status_code == 404
 
 
-def test_catalog_search_and_detail_api(client):
-    movies = client.get("/api/movies?q=sci-fi").get_json()
-    assert len(movies) >= 3
-    assert client.get("/api/movies/afterlight").get_json()["title"] == "Afterlight Station"
-    assert client.get("/api/movies/missing").status_code == 404
+def test_recipe_search_and_detail_api(client):
+    recipes = client.get("/api/recipes?q=VEGAN").get_json()
+    assert len(recipes) >= 2
+    recipe_id = recipes[0]["id"]
+    assert client.get(f"/api/recipes/{recipe_id}").get_json()["id"] == recipe_id
+    assert client.get("/api/recipes/missing").status_code == 404
 
 
-def test_watchlist_round_trip(client):
-    assert client.get("/api/watchlist").get_json() == []
-    assert client.post("/api/watchlist", json={"id": "afterlight"}).status_code == 201
-    assert [m["id"] for m in client.get("/api/watchlist").get_json()] == ["afterlight"]
-    assert client.delete("/api/watchlist/afterlight").get_json() == {"ids": []}
-    assert client.post("/api/watchlist", json={"id": "missing"}).status_code == 400
+def test_cookbook_round_trip(client):
+    recipe_id = client.get("/api/recipes").get_json()[0]["id"]
+    assert client.get("/api/cookbook").get_json() == []
+    assert client.post("/api/cookbook", json={"id": recipe_id}).status_code == 201
+    assert [recipe["id"] for recipe in client.get("/api/cookbook").get_json()] == [recipe_id]
+    assert client.delete(f"/api/cookbook/{recipe_id}").status_code == 200
+    assert client.post("/api/cookbook", json={"id": "missing"}).status_code == 400
